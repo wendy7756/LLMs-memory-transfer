@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LLM Memory Transfer
 // @namespace    https://github.com/wendy7756/LLMs-memory-transfer
-// @version 0.1.0
+// @version 0.1.1
 // @description  在ChatGPT、Claude和Gemini之间迁移记忆和文档数据
 // @description:en Transfer memories and documents between ChatGPT, Claude, and Gemini
 // @author       wendy
@@ -13,6 +13,7 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_registerMenuCommand
+// @grant        GM_unregisterMenuCommand
 // @grant        GM_xmlhttpRequest
 // @grant        GM_notification
 // @connect      api.github.com
@@ -779,22 +780,35 @@
         }
     };
 
+    // 存储菜单ID以便清理
+    let menuIds = [];
+
     // 初始化和菜单注册
     function initialize() {
         const currentSite = Utils.getCurrentSite();
         
         Utils.log(`脚本已加载，当前站点: ${currentSite}`);
 
+        // 清除已有菜单（如果有的话）
+        menuIds.forEach(id => {
+            try {
+                GM_unregisterMenuCommand(id);
+            } catch (e) {
+                // 忽略错误
+            }
+        });
+        menuIds = [];
+
         // 注册通用菜单
-        GM_registerMenuCommand('📋 查看状态', MemoryTransfer.showStatus);
-        GM_registerMenuCommand('⚙️ 配置Gist', MemoryTransfer.configureGist);
+        menuIds.push(GM_registerMenuCommand('📋 查看状态', MemoryTransfer.showStatus));
+        menuIds.push(GM_registerMenuCommand('⚙️ 配置Gist', MemoryTransfer.configureGist));
 
         // 根据站点注册特定菜单
         if (currentSite === 'chatgpt') {
-            GM_registerMenuCommand('📤 导出ChatGPT数据', MemoryTransfer.exportFromChatGPT);
+            menuIds.push(GM_registerMenuCommand('📤 导出ChatGPT数据', MemoryTransfer.exportFromChatGPT));
         } else if (['claude', 'gemini'].includes(currentSite)) {
-            GM_registerMenuCommand('📥 加载并注入记忆', MemoryTransfer.loadAndInject);
-            GM_registerMenuCommand('🔄 切换自动发送', MemoryTransfer.toggleAutoSend);
+            menuIds.push(GM_registerMenuCommand('📥 加载并注入记忆', MemoryTransfer.loadAndInject));
+            menuIds.push(GM_registerMenuCommand('🔄 切换自动发送', MemoryTransfer.toggleAutoSend));
         }
 
         // 添加样式
@@ -813,12 +827,16 @@
         document.head.appendChild(style);
     }
 
-    // 防止重复初始化
-    let isInitialized = false;
+    // 防止重复初始化 - 使用全局标识
+    const INIT_KEY = 'llm_memory_transfer_initialized';
     
     function safeInitialize() {
-        if (isInitialized) return;
-        isInitialized = true;
+        if (window[INIT_KEY]) {
+            Utils.log('脚本已初始化，跳过重复初始化');
+            return;
+        }
+        window[INIT_KEY] = true;
+        Utils.log('开始初始化脚本');
         initialize();
     }
 
