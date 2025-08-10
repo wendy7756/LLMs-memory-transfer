@@ -21,9 +21,6 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Install dependencies
-      run: npm install
-      
     - name: Validate userscript
       run: |
         # 验证脚本语法
@@ -61,12 +58,9 @@ jobs:
         echo "EOF" >> $GITHUB_OUTPUT
         
     - name: Create Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
-        tag_name: ${{ github.ref }}
-        release_name: LLM Memory Transfer v${{ steps.version.outputs.version }}
+        name: LLM Memory Transfer v${{ steps.version.outputs.version }}
         body: |
           ## 🚀 LLM Memory Transfer v${{ steps.version.outputs.version }}
           
@@ -95,18 +89,10 @@ jobs:
           - 🔧 [使用说明](https://github.com/${{ github.repository }}/blob/main/README.md)
           - ❓ [常见问题](https://github.com/${{ github.repository }}/blob/main/docs/FAQ.md)
           
+        files: |
+          llm-memory-transfer.user.js
         draft: false
         prerelease: false
-        
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./llm-memory-transfer.user.js
-        asset_name: llm-memory-transfer.user.js
-        asset_content_type: application/javascript
 
   validate:
     runs-on: ubuntu-latest
@@ -114,6 +100,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
     - name: Validate JavaScript syntax
       run: |
         # 验证JavaScript语法

@@ -4,8 +4,7 @@
   "description": "在ChatGPT、Claude和Gemini之间迁移记忆和文档数据的Tampermonkey用户脚本",
   "main": "llm-memory-transfer.user.js",
   "scripts": {
-    "lint": "eslint *.js",
-    "validate": "node validate-userscript.js"
+    "validate": "node -c llm-memory-transfer.user.js"
   },
   "repository": {
     "type": "git",
@@ -28,9 +27,7 @@
     "url": "https://github.com/wendy/LLMs-memory-transfer/issues"
   },
   "homepage": "https://github.com/wendy/LLMs-memory-transfer#readme",
-  "devDependencies": {
-    "eslint": "^8.0.0"
-  },
+
   "engines": {
     "node": ">=14.0.0"
   }
