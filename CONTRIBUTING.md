@@ -1,6 +1,6 @@
 # 贡献指南
 
-**🌍 Languages: 中文 | [English](CONTRIBUTING_EN.md)**
+中文 | [English](CONTRIBUTING_EN.md)
 
 感谢你对LLM Memory Transfer项目的关注！我们欢迎所有形式的贡献。
 
