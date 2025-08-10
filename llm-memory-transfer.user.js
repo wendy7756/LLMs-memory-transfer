@@ -236,7 +236,8 @@
         isRelevantKey(key) {
             const relevantPatterns = [
                 'custom', 'instruction', 'memory', 'prompt', 'setting',
-                'preference', 'profile', 'user', 'persona'
+                'preference', 'profile', 'user', 'persona',
+                'oai', 'chatgpt', 'openai', 'gpt'
             ];
             const keyLower = key.toLowerCase();
             return relevantPatterns.some(pattern => keyLower.includes(pattern));
@@ -245,15 +246,15 @@
         extractCustomInstructions(data, profile) {
             // 常见的自定义指令存储键
             const instructionKeys = Object.keys(data).filter(key => 
-                /instruction|custom|prompt/i.test(key)
+                /instruction|custom|prompt|profile|about|system|setting/i.test(key)
             );
 
             for (const key of instructionKeys) {
                 const value = data[key];
                 if (typeof value === 'string' && value.length > 10) {
-                    if (/system|about/i.test(key)) {
+                    if (/system|about|profile/i.test(key)) {
                         profile.profile.aboutYou = value;
-                    } else if (/style|reply|response/i.test(key)) {
+                    } else if (/style|reply|response|tone/i.test(key)) {
                         profile.profile.replyStyle = value;
                     }
                 } else if (typeof value === 'object' && value) {
@@ -305,6 +306,67 @@
                     profile.profile.tags.push(`用户名: ${text}`);
                     break;
                 }
+            }
+        },
+
+        /**
+         * 尝试通过ChatGPT私有接口获取最近会话
+         * 注意：该功能依赖已登录的Web会话，且仅在页面允许调用时生效。
+         */
+        async fetchRecentConversations(maxConversations = 3, maxMessagesPerConv = 10) {
+            try {
+                const base = window.location.origin; // 兼容 chat.openai.com / chatgpt.com
+                const listResp = await fetch(`${base}/backend-api/conversations?offset=0&limit=${maxConversations}`, {
+                    credentials: 'include'
+                });
+                if (!listResp.ok) throw new Error(`列表请求失败: ${listResp.status}`);
+                const listJson = await listResp.json();
+                const items = listJson.items || listJson.conversations || [];
+
+                const results = [];
+                for (const conv of items.slice(0, maxConversations)) {
+                    const id = conv.id || conv.conversation_id || conv.uuid;
+                    const title = conv.title || conv.summary || '';
+                    const createdAt = conv.create_time || conv.created_at || conv.created;
+                    const updatedAt = conv.update_time || conv.updated_at || conv.updated;
+
+                    const detailResp = await fetch(`${base}/backend-api/conversation/${id}`, {
+                        credentials: 'include'
+                    });
+                    if (!detailResp.ok) {
+                        results.push({ id, title, createdAt, updatedAt, messages: [] });
+                        continue;
+                    }
+                    const detailJson = await detailResp.json();
+
+                    const mapping = detailJson.mapping || {};
+                    const messages = [];
+                    for (const node of Object.values(mapping)) {
+                        const msg = node && node.message;
+                        if (!msg || !msg.content) continue;
+                        const role = msg.author?.role || msg.role;
+                        let text = '';
+                        const content = msg.content;
+                        if (Array.isArray(content.parts)) {
+                            text = content.parts.filter(p => typeof p === 'string').join('\n');
+                        } else if (typeof content === 'string') {
+                            text = content;
+                        } else if (Array.isArray(content)) {
+                            text = content.map(p => (typeof p === 'string' ? p : '')).join('\n');
+                        }
+                        if (role && text) {
+                            messages.push({ role, content: Utils.truncateText(text, 2000) });
+                        }
+                    }
+
+                    // 简单按长度或创建顺序截断
+                    const sliced = messages.slice(0, maxMessagesPerConv);
+                    results.push({ id, title, createdAt, updatedAt, messages: sliced });
+                }
+                return results;
+            } catch (e) {
+                Utils.log(`获取最近会话失败: ${e.message}`, 'error');
+                return [];
             }
         }
     };
@@ -565,6 +627,14 @@
                 );
                 if (notes !== null) {
                     profile.knowledge.notes = notes;
+                }
+
+                // 新增：是否包含最近会话
+                const includeConvs = confirm('是否包含最近的对话记录（最多3条）？');
+                if (includeConvs) {
+                    Utils.showNotification('正在获取最近会话...');
+                    const conversations = await DataExtractor.fetchRecentConversations(3, 12);
+                    profile.conversations = conversations;
                 }
 
                 // 保存到Gist

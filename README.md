@@ -2,7 +2,7 @@
 
 **🌍 Languages: 中文 | [English](README_EN.md)**
 
-一个强大的Tampermonkey用户脚本，可以在ChatGPT、Claude和Gemini之间迁移记忆和文档数据。
+一个好用的Tampermonkey用户脚本，可以在ChatGPT、Claude和Gemini之间迁移记忆和文档数据。
 
 [![GitHub Stars](https://img.shields.io/github/stars/wendy7756/LLMs-memery-transfer?style=social)](https://github.com/wendy7756/LLMs-memery-transfer)
 [![GitHub Forks](https://img.shields.io/github/forks/wendy7756/LLMs-memery-transfer?style=social)](https://github.com/wendy7756/LLMs-memery-transfer)
@@ -28,7 +28,7 @@
 ### 2. 安装脚本
 从以下任一源安装：
 - **Greasy Fork**: [LLM Memory Transfer](https://greasyfork.org/zh-CN/scripts/XXX-llm-memory-transfer)
-- **GitHub Raw**: [直接安装](https://github.com/wendy/LLMs-memory-transfer/raw/main/llm-memory-transfer.user.js)
+- **GitHub Raw**: [直接安装](https://github.com/wendy7756/LLMs-memory-transfer/raw/main/llm-memory-transfer.user.js)
 
 ### 3. 配置GitHub Token
 1. 访问 [GitHub Personal Access Tokens](https://github.com/settings/tokens)
