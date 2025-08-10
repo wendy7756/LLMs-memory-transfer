@@ -1,8 +1,12 @@
+<div align="center">
+  
 # 贡献指南
 
 中文 | [English](CONTRIBUTING_EN.md)
 
 感谢你对LLM Memory Transfer项目的关注！我们欢迎所有形式的贡献。
+
+</div>
 
 ## 🚀 快速开始
 
