@@ -1,6 +1,14 @@
 # LLM Memory Transfer
 
+**🌍 Languages: 中文 | [English](README_EN.md)**
+
 一个强大的Tampermonkey用户脚本，可以在ChatGPT、Claude和Gemini之间迁移记忆和文档数据。
+
+[![GitHub Stars](https://img.shields.io/github/stars/wendy7756/LLMs-memery-transfer?style=social)](https://github.com/wendy7756/LLMs-memery-transfer)
+[![GitHub Forks](https://img.shields.io/github/forks/wendy7756/LLMs-memery-transfer?style=social)](https://github.com/wendy7756/LLMs-memery-transfer)
+[![GitHub Issues](https://img.shields.io/github/issues/wendy7756/LLMs-memery-transfer)](https://github.com/wendy7756/LLMs-memery-transfer/issues)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Greasy Fork](https://img.shields.io/badge/Greasy%20Fork-Install-brightgreen)](https://greasyfork.org/zh-CN/scripts/XXX-llm-memory-transfer)
 
 ## 功能特点
 
@@ -112,17 +120,82 @@ cd LLMs-memory-transfer
 3. 提交到GitHub
 4. Greasy Fork会自动检测更新
 
-## 贡献
+## 🤝 贡献
 
-欢迎提交Issue和Pull Request！
+我们欢迎所有形式的贡献！无论是报告bug、提出功能建议、改进文档还是提交代码。
 
-## 许可证
+### 如何贡献
 
-MIT License
+1. **报告问题**
+   - 使用我们的 [Bug报告模板](https://github.com/wendy7756/LLMs-memery-transfer/issues/new?template=bug_report.md)
+   - 提供详细的错误信息和复现步骤
+
+2. **提出功能建议**
+   - 使用我们的 [功能请求模板](https://github.com/wendy7756/LLMs-memery-transfer/issues/new?template=feature_request.md)
+   - 描述功能的使用场景和预期效果
+
+3. **提交代码**
+   ```bash
+   # Fork项目后
+   git clone https://github.com/你的用户名/LLMs-memery-transfer.git
+   cd LLMs-memery-transfer
+   
+   # 创建功能分支
+   git checkout -b feature/你的功能名称
+   
+   # 提交更改
+   git commit -m "feat: 添加新功能"
+   
+   # 推送并创建Pull Request
+   git push origin feature/你的功能名称
+   ```
+
+4. **改进文档**
+   - 修正错别字或不准确的描述
+   - 添加使用示例或常见问题解答
+   - 翻译文档到其他语言
+
+### 开发指南
+
+- 保持代码风格一致
+- 添加必要的注释
+- 测试你的更改
+- 更新相关文档
+
+### 贡献者
+
+感谢所有为这个项目做出贡献的人！
+
+## 🌟 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=wendy7756/LLMs-memery-transfer&type=Date)](https://star-history.com/#wendy7756/LLMs-memery-transfer&Date)
+
+## 📄 许可证
+
+本项目采用 [Apache License 2.0](LICENSE) 开源许可证。
+
+这意味着你可以：
+- ✅ 商业使用
+- ✅ 修改代码  
+- ✅ 分发代码
+- ✅ 私人使用
+- ✅ 专利使用
+
+你必须：
+- 📋 包含版权声明
+- 📋 包含许可证文本
+- 📋 声明所做的更改
+
+## 💡 免责声明
+
+- 本工具仅用于合法的个人数据管理
+- 请遵守各平台的服务条款
+- 使用时请注意保护个人隐私
+- 作者不承担任何使用风险
 
 ## 更新日志
 
-### v0.1.0 (2024-01-01)
+### v0.1.0 (2025-08-10)
 - 🎉 首次发布
 - ✨ 支持ChatGPT数据导出
 - ✨ 支持Claude/Gemini数据注入

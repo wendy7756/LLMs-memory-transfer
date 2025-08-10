@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LLM Memory Transfer
-// @namespace    https://github.com/wendy/LLMs-memory-transfer
-// @version      0.1.0
+// @namespace    https://github.com/wendy7756/LLMs-memory-transfer
+// @version 0.1.0
 // @description  在ChatGPT、Claude和Gemini之间迁移记忆和文档数据
 // @description:en Transfer memories and documents between ChatGPT, Claude, and Gemini
 // @author       wendy
@@ -17,11 +17,27 @@
 // @grant        GM_notification
 // @connect      api.github.com
 // @connect      gist.github.com
-// @license      MIT
-// @supportURL   https://github.com/wendy/LLMs-memory-transfer/issues
-// @updateURL    https://github.com/wendy/LLMs-memory-transfer/raw/main/llm-memory-transfer.user.js
-// @downloadURL  https://github.com/wendy/LLMs-memory-transfer/raw/main/llm-memory-transfer.user.js
+// @license      Apache-2.0
+// @supportURL   https://github.com/wendy7756/LLMs-memory-transfer/issues
+// @updateURL    https://github.com/wendy7756/LLMs-memory-transfer/raw/main/llm-memory-transfer.user.js
+// @downloadURL  https://github.com/wendy7756/LLMs-memory-transfer/raw/main/llm-memory-transfer.user.js
 // ==/UserScript==
+
+/*
+ * Copyright 2025 wendy
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 (function() {
     'use strict';

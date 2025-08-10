@@ -22,11 +22,11 @@
     "ai"
   ],
   "author": "wendy",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/wendy/LLMs-memory-transfer/issues"
+    "url": "https://github.com/wendy7756/LLMs-memory-transfer/issues"
   },
-  "homepage": "https://github.com/wendy/LLMs-memory-transfer#readme",
+  "homepage": "https://github.com/wendy7756/LLMs-memory-transfer#readme",
 
   "engines": {
     "node": ">=14.0.0"

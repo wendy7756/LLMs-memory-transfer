@@ -165,10 +165,10 @@
 
 如果以上解答无法解决您的问题：
 
-- 📧 提交 [GitHub Issue](https://github.com/wendy/LLMs-memory-transfer/issues)
-- 📖 查看 [项目文档](https://github.com/wendy/LLMs-memory-transfer)
+- 📧 提交 [GitHub Issue](https://github.com/wendy7756/LLMs-memory-transfer/issues)
+- 📖 查看 [项目文档](https://github.com/wendy7756/LLMs-memory-transfer)
 - 💬 参与社区讨论
 
 ---
 
-*最后更新: 2024-01-01* 
+*最后更新: 2025-08-10* 

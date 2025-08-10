@@ -28,7 +28,7 @@ jobs:
         
         # 检查版本号一致性
         PACKAGE_VERSION=$(node -p "require('./package.json').version")
-        SCRIPT_VERSION=$(grep -o '@version.*' llm-memory-transfer.user.js | cut -d' ' -f2 | tr -d ' ')
+        SCRIPT_VERSION=$(grep '@version' llm-memory-transfer.user.js | sed 's/.*@version[[:space:]]*\([0-9.]*\).*/\1/')
         
         if [ "$PACKAGE_VERSION" != "$SCRIPT_VERSION" ]; then
           echo "版本号不一致: package.json($PACKAGE_VERSION) vs userscript($SCRIPT_VERSION)"
