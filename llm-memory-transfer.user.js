@@ -716,7 +716,11 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initialize);
     } else {
-        initialize();
+        // 确保页面完全加载后再初始化
+        setTimeout(initialize, 100);
     }
+
+    // 强制初始化（防止某些情况下初始化失败）
+    initialize();
 
 })(); 
