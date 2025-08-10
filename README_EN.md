@@ -2,7 +2,7 @@
 
 # LLM Memory Transfer
 
-Languages: English | [中文](README.md)
+English | [中文](README.md)
 
 A powerful Tampermonkey userscript that enables seamless memory and document transfer between ChatGPT, Claude, and Gemini.
 
