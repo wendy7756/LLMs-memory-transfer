@@ -1,0 +1,145 @@
+name: Release and Deploy
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Validate userscript
+      run: |
+        # 验证脚本语法
+        node -c llm-memory-transfer.user.js
+        
+        # 检查版本号一致性
+        PACKAGE_VERSION=$(node -p "require('./package.json').version")
+        SCRIPT_VERSION=$(grep -o '@version.*' llm-memory-transfer.user.js | cut -d' ' -f2 | tr -d ' ')
+        
+        if [ "$PACKAGE_VERSION" != "$SCRIPT_VERSION" ]; then
+          echo "版本号不一致: package.json($PACKAGE_VERSION) vs userscript($SCRIPT_VERSION)"
+          exit 1
+        fi
+        
+        echo "版本验证通过: $PACKAGE_VERSION"
+        
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # 生成变更日志
+        if [ -f CHANGELOG.md ]; then
+          CHANGELOG=$(sed -n "/## \[${VERSION}\]/,/## \[/p" CHANGELOG.md | head -n -1)
+        else
+          CHANGELOG="详细更新内容请查看commit历史"
+        fi
+        
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: LLM Memory Transfer v${{ steps.version.outputs.version }}
+        body: |
+          ## 🚀 LLM Memory Transfer v${{ steps.version.outputs.version }}
+          
+          ### 安装方法
+          
+          **自动安装（推荐）:**
+          - [从 Greasy Fork 安装](https://greasyfork.org/zh-CN/scripts/XXX-llm-memory-transfer)
+          - [直接安装 (.user.js)](https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/llm-memory-transfer.user.js)
+          
+          **手动安装:**
+          1. 复制脚本内容
+          2. 在Tampermonkey中创建新脚本
+          3. 粘贴并保存
+          
+          ### 更新内容
+          
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ### 支持的网站
+          - ✅ ChatGPT (chat.openai.com, chatgpt.com) 
+          - ✅ Claude (claude.ai)
+          - ✅ Gemini (gemini.google.com)
+          
+          ### 文档
+          - 📖 [安装指南](https://github.com/${{ github.repository }}/blob/main/docs/INSTALL.md)
+          - 🔧 [使用说明](https://github.com/${{ github.repository }}/blob/main/README.md)
+          - ❓ [常见问题](https://github.com/${{ github.repository }}/blob/main/docs/FAQ.md)
+          
+        draft: false
+        prerelease: false
+        
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./llm-memory-transfer.user.js
+        asset_name: llm-memory-transfer.user.js
+        asset_content_type: application/javascript
+
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Validate JavaScript syntax
+      run: |
+        # 验证JavaScript语法
+        node -c llm-memory-transfer.user.js
+        echo "✅ JavaScript语法验证通过"
+        
+    - name: Check Tampermonkey headers
+      run: |
+        # 验证Tampermonkey头部信息
+        if ! grep -q "// ==UserScript==" llm-memory-transfer.user.js; then
+          echo "❌ 缺少UserScript头部"
+          exit 1
+        fi
+        
+        if ! grep -q "// ==/UserScript==" llm-memory-transfer.user.js; then
+          echo "❌ UserScript头部未正确闭合"
+          exit 1
+        fi
+        
+        # 检查必需的metadata
+        REQUIRED_FIELDS=("@name" "@version" "@description" "@match")
+        for field in "${REQUIRED_FIELDS[@]}"; do
+          if ! grep -q "$field" llm-memory-transfer.user.js; then
+            echo "❌ 缺少必需字段: $field"
+            exit 1
+          fi
+        done
+        
+        echo "✅ Tampermonkey头部验证通过" 

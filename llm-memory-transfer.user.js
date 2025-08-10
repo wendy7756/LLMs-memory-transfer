@@ -1,0 +1,706 @@
+// ==UserScript==
+// @name         LLM Memory Transfer
+// @namespace    https://github.com/wendy/LLMs-memory-transfer
+// @version      0.1.0
+// @description  在ChatGPT、Claude和Gemini之间迁移记忆和文档数据
+// @description:en Transfer memories and documents between ChatGPT, Claude, and Gemini
+// @author       wendy
+// @match        https://chat.openai.com/*
+// @match        https://chatgpt.com/*
+// @match        https://claude.ai/*
+// @match        https://gemini.google.com/*
+// @match        https://bard.google.com/*
+// @grant        GM_setValue
+// @grant        GM_getValue
+// @grant        GM_registerMenuCommand
+// @grant        GM_xmlhttpRequest
+// @grant        GM_notification
+// @connect      api.github.com
+// @connect      gist.github.com
+// @license      MIT
+// @supportURL   https://github.com/wendy/LLMs-memory-transfer/issues
+// @updateURL    https://github.com/wendy/LLMs-memory-transfer/raw/main/llm-memory-transfer.user.js
+// @downloadURL  https://github.com/wendy/LLMs-memory-transfer/raw/main/llm-memory-transfer.user.js
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // 配置常量
+    const CONFIG = {
+        version: '0.1.0',
+        storageKeys: {
+            gistToken: 'llm_mt_gist_token',
+            gistId: 'llm_mt_gist_id',
+            gistFile: 'llm-memory.json',
+            autoSend: 'llm_mt_auto_send',
+            lastExport: 'llm_mt_last_export'
+        },
+        sites: {
+            chatgpt: ['chat.openai.com', 'chatgpt.com'],
+            claude: ['claude.ai'],
+            gemini: ['gemini.google.com', 'bard.google.com']
+        }
+    };
+
+    // 工具函数
+    const Utils = {
+        getCurrentSite() {
+            const hostname = window.location.hostname;
+            for (const [site, domains] of Object.entries(CONFIG.sites)) {
+                if (domains.some(domain => hostname.includes(domain))) {
+                    return site;
+                }
+            }
+            return 'unknown';
+        },
+
+        log(message, type = 'info') {
+            console.log(`[LLM Memory Transfer] ${type.toUpperCase()}: ${message}`);
+        },
+
+        showNotification(message, type = 'info') {
+            GM_notification({
+                title: 'LLM Memory Transfer',
+                text: message,
+                timeout: 3000
+            });
+        },
+
+        truncateText(text, maxLength = 100) {
+            if (!text || text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        },
+
+        formatDate(date = new Date()) {
+            return date.toISOString().split('T')[0];
+        }
+    };
+
+    // GitHub API 操作
+    const GitHubAPI = {
+        async request({ method = 'GET', url, token, data }) {
+            return new Promise((resolve, reject) => {
+                GM_xmlhttpRequest({
+                    method,
+                    url,
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github+json',
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'LLM-Memory-Transfer-UserScript'
+                    },
+                    data: data ? JSON.stringify(data) : undefined,
+                    timeout: 10000,
+                    onload: (response) => {
+                        try {
+                            const result = response.responseText ? JSON.parse(response.responseText) : null;
+                            if (response.status >= 200 && response.status < 300) {
+                                resolve(result);
+                            } else {
+                                reject(new Error(`GitHub API错误 ${response.status}: ${result?.message || '未知错误'}`));
+                            }
+                        } catch (e) {
+                            if (response.status >= 200 && response.status < 300) {
+                                resolve(null);
+                            } else {
+                                reject(new Error(`响应解析失败: ${e.message}`));
+                            }
+                        }
+                    },
+                    onerror: () => reject(new Error('网络请求失败')),
+                    ontimeout: () => reject(new Error('请求超时'))
+                });
+            });
+        },
+
+        async createGist(token, fileName, content) {
+            const gistData = {
+                description: 'LLM Memory Transfer - 记忆和文档数据同步',
+                public: false,
+                files: {
+                    [fileName]: {
+                        content: JSON.stringify(content, null, 2)
+                    }
+                }
+            };
+
+            return this.request({
+                method: 'POST',
+                url: 'https://api.github.com/gists',
+                token,
+                data: gistData
+            });
+        },
+
+        async updateGist(token, gistId, fileName, content) {
+            const updateData = {
+                files: {
+                    [fileName]: {
+                        content: JSON.stringify(content, null, 2)
+                    }
+                }
+            };
+
+            return this.request({
+                method: 'PATCH',
+                url: `https://api.github.com/gists/${gistId}`,
+                token,
+                data: updateData
+            });
+        },
+
+        async getGist(token, gistId) {
+            return this.request({
+                method: 'GET',
+                url: `https://api.github.com/gists/${gistId}`,
+                token
+            });
+        }
+    };
+
+    // 数据提取器
+    const DataExtractor = {
+        getEmptyProfile() {
+            return {
+                version: 1,
+                exportedAt: new Date().toISOString(),
+                source: Utils.getCurrentSite(),
+                profile: {
+                    aboutYou: '',
+                    replyStyle: '',
+                    language: 'zh-CN',
+                    preferences: {},
+                    tags: []
+                },
+                memoryItems: [],
+                conversations: [],
+                knowledge: {
+                    urls: [],
+                    documents: [],
+                    notes: ''
+                },
+                customInstructions: {
+                    systemPrompt: '',
+                    userPrompt: ''
+                }
+            };
+        },
+
+        extractFromChatGPT() {
+            Utils.log('开始从ChatGPT提取数据');
+            const profile = this.getEmptyProfile();
+            const extractedData = {};
+
+            // 从localStorage提取数据
+            for (const key of Object.keys(localStorage)) {
+                if (this.isRelevantKey(key)) {
+                    try {
+                        const value = localStorage.getItem(key);
+                        extractedData[key] = value ? JSON.parse(value) : value;
+                    } catch (e) {
+                        extractedData[key] = localStorage.getItem(key);
+                    }
+                }
+            }
+
+            // 尝试提取自定义指令
+            this.extractCustomInstructions(extractedData, profile);
+            
+            // 尝试提取记忆项
+            this.extractMemoryItems(extractedData, profile);
+
+            // 尝试从页面提取信息
+            this.extractFromPage(profile);
+
+            Utils.log(`提取完成，找到 ${profile.memoryItems.length} 个记忆项`);
+            return { profile, rawData: extractedData };
+        },
+
+        isRelevantKey(key) {
+            const relevantPatterns = [
+                'custom', 'instruction', 'memory', 'prompt', 'setting',
+                'preference', 'profile', 'user', 'persona'
+            ];
+            const keyLower = key.toLowerCase();
+            return relevantPatterns.some(pattern => keyLower.includes(pattern));
+        },
+
+        extractCustomInstructions(data, profile) {
+            // 常见的自定义指令存储键
+            const instructionKeys = Object.keys(data).filter(key => 
+                /instruction|custom|prompt/i.test(key)
+            );
+
+            for (const key of instructionKeys) {
+                const value = data[key];
+                if (typeof value === 'string' && value.length > 10) {
+                    if (/system|about/i.test(key)) {
+                        profile.profile.aboutYou = value;
+                    } else if (/style|reply|response/i.test(key)) {
+                        profile.profile.replyStyle = value;
+                    }
+                } else if (typeof value === 'object' && value) {
+                    // 尝试从对象中提取
+                    for (const [subKey, subValue] of Object.entries(value)) {
+                        if (typeof subValue === 'string' && subValue.length > 10) {
+                            profile.memoryItems.push({
+                                key: `${key}.${subKey}`,
+                                value: subValue,
+                                source: 'localStorage',
+                                type: 'custom_instruction'
+                            });
+                        }
+                    }
+                }
+            }
+        },
+
+        extractMemoryItems(data, profile) {
+            for (const [key, value] of Object.entries(data)) {
+                if (typeof value === 'string' && value.length > 5) {
+                    profile.memoryItems.push({
+                        key,
+                        value: Utils.truncateText(value, 500),
+                        source: 'localStorage',
+                        type: 'memory'
+                    });
+                } else if (Array.isArray(value)) {
+                    value.forEach((item, index) => {
+                        if (typeof item === 'string' && item.length > 5) {
+                            profile.memoryItems.push({
+                                key: `${key}[${index}]`,
+                                value: Utils.truncateText(item, 500),
+                                source: 'localStorage',
+                                type: 'array_item'
+                            });
+                        }
+                    });
+                }
+            }
+        },
+
+        extractFromPage(profile) {
+            // 尝试从页面提取用户名等信息
+            const userNameElements = document.querySelectorAll('[data-testid*="user"], .user-name, .profile-name');
+            for (const el of userNameElements) {
+                const text = el.textContent?.trim();
+                if (text && text.length > 1 && text.length < 50) {
+                    profile.profile.tags.push(`用户名: ${text}`);
+                    break;
+                }
+            }
+        }
+    };
+
+    // 内容注入器
+    const ContentInjector = {
+        buildMemoryBlock(profile) {
+            const lines = [];
+            
+            lines.push('=== LLM记忆迁移 v' + CONFIG.version + ' ===');
+            lines.push(`数据来源: ${profile.source} | 导出时间: ${Utils.formatDate(new Date(profile.exportedAt))}`);
+            lines.push('');
+
+            // 个人资料
+            if (profile.profile.aboutYou) {
+                lines.push('【关于我】');
+                lines.push(profile.profile.aboutYou);
+                lines.push('');
+            }
+
+            if (profile.profile.replyStyle) {
+                lines.push('【回复风格】');
+                lines.push(profile.profile.replyStyle);
+                lines.push('');
+            }
+
+            // 记忆项
+            if (profile.memoryItems.length > 0) {
+                lines.push('【记忆事项】');
+                const displayItems = profile.memoryItems.slice(0, 15); // 限制显示数量
+                displayItems.forEach((item, index) => {
+                    lines.push(`${index + 1}. ${item.key}: ${Utils.truncateText(item.value, 200)}`);
+                });
+                
+                if (profile.memoryItems.length > 15) {
+                    lines.push(`... 还有 ${profile.memoryItems.length - 15} 项记忆`);
+                }
+                lines.push('');
+            }
+
+            // 知识链接
+            if (profile.knowledge.urls.length > 0) {
+                lines.push('【相关链接】');
+                profile.knowledge.urls.slice(0, 10).forEach((url, index) => {
+                    lines.push(`${index + 1}. ${url}`);
+                });
+                lines.push('');
+            }
+
+            // 额外笔记
+            if (profile.knowledge.notes) {
+                lines.push('【额外笔记】');
+                lines.push(profile.knowledge.notes);
+                lines.push('');
+            }
+
+            lines.push('请在本次会话中记住以上所有信息，并根据我的偏好和历史记忆进行回复。');
+
+            return lines.join('\n');
+        },
+
+        findTextInput() {
+            // 按优先级查找输入框
+            const selectors = [
+                'textarea[placeholder*="消息"], textarea[placeholder*="Message"]',
+                'textarea:not([disabled]):not([readonly])',
+                'div[contenteditable="true"][role="textbox"]',
+                'div[contenteditable="true"]',
+                '#prompt-textarea',
+                '[data-testid*="input"]'
+            ];
+
+            for (const selector of selectors) {
+                const element = document.querySelector(selector);
+                if (element && this.isVisibleInput(element)) {
+                    return element;
+                }
+            }
+
+            return null;
+        },
+
+        isVisibleInput(element) {
+            const rect = element.getBoundingClientRect();
+            const style = window.getComputedStyle(element);
+            return rect.height > 20 && 
+                   rect.width > 100 && 
+                   style.display !== 'none' && 
+                   style.visibility !== 'hidden';
+        },
+
+        insertText(element, text) {
+            if (!element) return false;
+
+            element.focus();
+
+            if (element.tagName.toLowerCase() === 'textarea' || element.tagName.toLowerCase() === 'input') {
+                // 处理textarea和input
+                element.value = text;
+                element.dispatchEvent(new Event('input', { bubbles: true }));
+                element.dispatchEvent(new Event('change', { bubbles: true }));
+            } else {
+                // 处理contenteditable
+                element.innerHTML = '';
+                element.textContent = text;
+                element.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            // 触发额外事件以确保兼容性
+            element.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
+            element.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+
+            return true;
+        },
+
+        findSendButton() {
+            const selectors = [
+                'button[type="submit"]',
+                'button[aria-label*="Send"], button[aria-label*="发送"]',
+                'button[data-testid*="send"]',
+                'button:has(svg[data-testid*="send"])',
+                'button:has(.send-icon)',
+                '[role="button"][aria-label*="Send"]'
+            ];
+
+            for (const selector of selectors) {
+                const button = document.querySelector(selector);
+                if (button && !button.disabled && this.isVisibleButton(button)) {
+                    return button;
+                }
+            }
+
+            return null;
+        },
+
+        isVisibleButton(button) {
+            const rect = button.getBoundingClientRect();
+            const style = window.getComputedStyle(button);
+            return rect.height > 10 && 
+                   rect.width > 10 && 
+                   style.display !== 'none' && 
+                   style.visibility !== 'hidden';
+        },
+
+        async injectMemory(profile, autoSend = false) {
+            const memoryBlock = this.buildMemoryBlock(profile);
+            const inputElement = this.findTextInput();
+
+            if (!inputElement) {
+                throw new Error('未找到输入框，请确保在新会话页面操作');
+            }
+
+            const success = this.insertText(inputElement, memoryBlock);
+            if (!success) {
+                throw new Error('文本插入失败');
+            }
+
+            Utils.showNotification('记忆块已注入到输入框');
+
+            if (autoSend) {
+                // 延迟发送，确保文本插入完成
+                setTimeout(() => {
+                    const sendButton = this.findSendButton();
+                    if (sendButton) {
+                        sendButton.click();
+                        Utils.showNotification('记忆块已自动发送');
+                    } else {
+                        Utils.showNotification('未找到发送按钮，请手动发送');
+                    }
+                }, 500);
+            }
+
+            return true;
+        }
+    };
+
+    // 主要功能模块
+    const MemoryTransfer = {
+        async configureGist() {
+            try {
+                const currentToken = await GM_getValue(CONFIG.storageKeys.gistToken, '');
+                const token = prompt(
+                    '请输入GitHub Personal Access Token（需要gist权限）:\n\n' +
+                    '1. 访问 https://github.com/settings/tokens\n' +
+                    '2. 点击"Generate new token (classic)"\n' +
+                    '3. 勾选"gist"权限\n' +
+                    '4. 复制生成的token',
+                    currentToken
+                );
+
+                if (!token) return;
+
+                let gistId = await GM_getValue(CONFIG.storageKeys.gistId, '');
+                gistId = prompt(
+                    '请输入Gist ID（留空将自动创建新的Gist）:',
+                    gistId
+                );
+
+                if (!gistId) {
+                    Utils.showNotification('正在创建新的Gist...');
+                    const emptyProfile = DataExtractor.getEmptyProfile();
+                    const newGist = await GitHubAPI.createGist(token, CONFIG.storageKeys.gistFile, emptyProfile);
+                    gistId = newGist.id;
+                    Utils.showNotification(`新Gist已创建: ${gistId}`);
+                }
+
+                await GM_setValue(CONFIG.storageKeys.gistToken, token);
+                await GM_setValue(CONFIG.storageKeys.gistId, gistId);
+
+                Utils.showNotification('Gist配置完成！');
+
+            } catch (error) {
+                Utils.log(`配置Gist失败: ${error.message}`, 'error');
+                alert(`配置失败: ${error.message}`);
+            }
+        },
+
+        async exportFromChatGPT() {
+            if (Utils.getCurrentSite() !== 'chatgpt') {
+                alert('请在ChatGPT页面执行此操作');
+                return;
+            }
+
+            try {
+                const { profile } = DataExtractor.extractFromChatGPT();
+
+                // 允许用户编辑关键信息
+                const aboutYou = prompt(
+                    '关于你的信息（可编辑）:',
+                    profile.profile.aboutYou || ''
+                );
+                if (aboutYou !== null) {
+                    profile.profile.aboutYou = aboutYou;
+                }
+
+                const replyStyle = prompt(
+                    '期望的回复风格（可编辑）:',
+                    profile.profile.replyStyle || '简洁、专业、中文回复'
+                );
+                if (replyStyle !== null) {
+                    profile.profile.replyStyle = replyStyle;
+                }
+
+                const knowledgeUrls = prompt(
+                    '相关知识链接（逗号分隔，可留空）:',
+                    profile.knowledge.urls.join(', ')
+                );
+                if (knowledgeUrls !== null) {
+                    profile.knowledge.urls = knowledgeUrls
+                        .split(',')
+                        .map(url => url.trim())
+                        .filter(url => url.length > 0);
+                }
+
+                const notes = prompt(
+                    '额外笔记（可留空）:',
+                    profile.knowledge.notes
+                );
+                if (notes !== null) {
+                    profile.knowledge.notes = notes;
+                }
+
+                // 保存到Gist
+                const token = await GM_getValue(CONFIG.storageKeys.gistToken, '');
+                const gistId = await GM_getValue(CONFIG.storageKeys.gistId, '');
+
+                if (!token || !gistId) {
+                    throw new Error('请先配置Gist');
+                }
+
+                await GitHubAPI.updateGist(token, gistId, CONFIG.storageKeys.gistFile, profile);
+                await GM_setValue(CONFIG.storageKeys.lastExport, new Date().toISOString());
+
+                Utils.showNotification('数据导出成功！');
+                Utils.log('数据已成功导出到Gist');
+
+            } catch (error) {
+                Utils.log(`导出失败: ${error.message}`, 'error');
+                alert(`导出失败: ${error.message}`);
+            }
+        },
+
+        async loadAndInject() {
+            const currentSite = Utils.getCurrentSite();
+            if (!['claude', 'gemini'].includes(currentSite)) {
+                alert('请在Claude或Gemini页面执行此操作');
+                return;
+            }
+
+            try {
+                const token = await GM_getValue(CONFIG.storageKeys.gistToken, '');
+                const gistId = await GM_getValue(CONFIG.storageKeys.gistId, '');
+
+                if (!token || !gistId) {
+                    throw new Error('请先配置Gist');
+                }
+
+                Utils.showNotification('正在从Gist加载数据...');
+                const gistData = await GitHubAPI.getGist(token, gistId);
+                const fileContent = gistData.files[CONFIG.storageKeys.gistFile];
+
+                if (!fileContent) {
+                    throw new Error('Gist中未找到记忆数据文件');
+                }
+
+                const profile = JSON.parse(fileContent.content);
+                
+                const autoSend = await GM_getValue(CONFIG.storageKeys.autoSend, false);
+                
+                if (!autoSend) {
+                    const shouldSend = confirm(
+                        '数据加载成功！\n\n' +
+                        `记忆项: ${profile.memoryItems.length} 个\n` +
+                        `导出时间: ${Utils.formatDate(new Date(profile.exportedAt))}\n\n` +
+                        '是否立即发送到对话框？'
+                    );
+                    
+                    await ContentInjector.injectMemory(profile, shouldSend);
+                } else {
+                    await ContentInjector.injectMemory(profile, true);
+                }
+
+            } catch (error) {
+                Utils.log(`加载失败: ${error.message}`, 'error');
+                alert(`加载失败: ${error.message}`);
+            }
+        },
+
+        async toggleAutoSend() {
+            const current = await GM_getValue(CONFIG.storageKeys.autoSend, false);
+            const newValue = !current;
+            await GM_setValue(CONFIG.storageKeys.autoSend, newValue);
+            Utils.showNotification(`自动发送已${newValue ? '开启' : '关闭'}`);
+        },
+
+        async showStatus() {
+            try {
+                const token = await GM_getValue(CONFIG.storageKeys.gistToken, '');
+                const gistId = await GM_getValue(CONFIG.storageKeys.gistId, '');
+                const lastExport = await GM_getValue(CONFIG.storageKeys.lastExport, '');
+                const autoSend = await GM_getValue(CONFIG.storageKeys.autoSend, false);
+
+                let status = 'LLM Memory Transfer 状态\n\n';
+                status += `版本: ${CONFIG.version}\n`;
+                status += `当前站点: ${Utils.getCurrentSite()}\n`;
+                status += `Gist配置: ${token && gistId ? '✅ 已配置' : '❌ 未配置'}\n`;
+                status += `上次导出: ${lastExport ? Utils.formatDate(new Date(lastExport)) : '从未导出'}\n`;
+                status += `自动发送: ${autoSend ? '✅ 开启' : '❌ 关闭'}\n`;
+
+                if (token && gistId) {
+                    try {
+                        const gistData = await GitHubAPI.getGist(token, gistId);
+                        const fileContent = gistData.files[CONFIG.storageKeys.gistFile];
+                        if (fileContent) {
+                            const profile = JSON.parse(fileContent.content);
+                            status += `\nGist数据:\n`;
+                            status += `- 记忆项: ${profile.memoryItems.length} 个\n`;
+                            status += `- 数据来源: ${profile.source}\n`;
+                            status += `- 最后更新: ${Utils.formatDate(new Date(profile.exportedAt))}\n`;
+                        }
+                    } catch (e) {
+                        status += '\nGist数据: ❌ 加载失败\n';
+                    }
+                }
+
+                alert(status);
+
+            } catch (error) {
+                alert(`获取状态失败: ${error.message}`);
+            }
+        }
+    };
+
+    // 初始化和菜单注册
+    function initialize() {
+        const currentSite = Utils.getCurrentSite();
+        
+        Utils.log(`脚本已加载，当前站点: ${currentSite}`);
+
+        // 注册通用菜单
+        GM_registerMenuCommand('📋 查看状态', MemoryTransfer.showStatus);
+        GM_registerMenuCommand('⚙️ 配置Gist', MemoryTransfer.configureGist);
+
+        // 根据站点注册特定菜单
+        if (currentSite === 'chatgpt') {
+            GM_registerMenuCommand('📤 导出ChatGPT数据', MemoryTransfer.exportFromChatGPT);
+        } else if (['claude', 'gemini'].includes(currentSite)) {
+            GM_registerMenuCommand('📥 加载并注入记忆', MemoryTransfer.loadAndInject);
+            GM_registerMenuCommand('🔄 切换自动发送', MemoryTransfer.toggleAutoSend);
+        }
+
+        // 添加样式
+        addCustomStyles();
+    }
+
+    function addCustomStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            /* LLM Memory Transfer 样式 */
+            .llm-memory-injected {
+                border: 2px solid #4CAF50 !important;
+                box-shadow: 0 0 10px rgba(76, 175, 80, 0.3) !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // 等待页面加载完成后初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+        initialize();
+    }
+
+})(); 
