@@ -155,10 +155,6 @@ Thanks to all contributors who make this project better!
 
 For detailed contribution guidelines, see [CONTRIBUTING_EN.md](CONTRIBUTING_EN.md).
 
-## 🌟 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=wendy7756/LLMs-memery-transfer&type=Date)](https://star-history.com/#wendy7756/LLMs-memery-transfer&Date)
-
 ## 📄 License
 
 This project is licensed under the [Apache License 2.0](LICENSE).
@@ -182,18 +178,3 @@ You must:
 - Protect your privacy when using
 - The author assumes no responsibility for any usage risks
 
-## 🆕 Changelog
-
-### v0.1.0 (2025-08-10)
-- 🎉 Initial release of LLM Memory Transfer
-- ✨ Support for ChatGPT memory and custom instruction extraction
-- ✨ GitHub Gist cloud synchronization
-- ✨ One-click memory injection for Claude and Gemini
-- ✨ Auto-detection and adaptation for different platform input boxes
-- ✨ Configurable auto-send functionality
-- ✨ Complete error handling and user feedback mechanisms
-- ✨ Manual editing and data supplementation support
-- ✨ Multi-device configuration synchronization
-- ✨ Detailed status checking and diagnostic features
-
-For the complete changelog, see [CHANGELOG.md](CHANGELOG.md). 
