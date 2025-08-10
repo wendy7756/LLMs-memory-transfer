@@ -164,10 +164,6 @@ cd LLMs-memory-transfer
 
 感谢所有为这个项目做出贡献的人！
 
-## 🌟 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=wendy7756/LLMs-memery-transfer&type=Date)](https://star-history.com/#wendy7756/LLMs-memery-transfer&Date)
-
 ## 📄 许可证
 
 本项目采用 [Apache License 2.0](LICENSE) 开源许可证。
@@ -190,11 +186,3 @@ cd LLMs-memory-transfer
 - 请遵守各平台的服务条款
 - 使用时请注意保护个人隐私
 - 作者不承担任何使用风险
-
-## 更新日志
-
-### v0.1.0 (2025-08-10)
-- 🎉 首次发布
-- ✨ 支持ChatGPT数据导出
-- ✨ 支持Claude/Gemini数据注入
-- ✨ GitHub Gist同步功能
