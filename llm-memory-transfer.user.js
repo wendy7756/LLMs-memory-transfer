@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LLM Memory Transfer
 // @namespace    https://github.com/wendy7756/LLMs-memory-transfer
-// @version 0.1.1
+// @version 0.1.2
 // @description  在ChatGPT、Claude和Gemini之间迁移记忆和文档数据
 // @description:en Transfer memories and documents between ChatGPT, Claude, and Gemini
 // @author       wendy
@@ -116,10 +116,11 @@
                     method,
                     url,
                     headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github+json',
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
                         'Content-Type': 'application/json',
-                        'User-Agent': 'LLM-Memory-Transfer-UserScript'
+                        'User-Agent': 'LLM-Memory-Transfer-UserScript',
+                        'X-GitHub-Api-Version': '2022-11-28'
                     },
                     data: data ? JSON.stringify(data) : undefined,
                     timeout: 10000,
@@ -581,13 +582,22 @@
                 // 测试Token是否有效
                 Utils.showNotification('正在验证Token...');
                 try {
-                    await GitHubAPI.request({
+                    const userInfo = await GitHubAPI.request({
                         method: 'GET',
                         url: 'https://api.github.com/user',
                         token
                     });
+                    Utils.showNotification(`✅ Token验证成功！用户: ${userInfo.login}`);
                 } catch (e) {
-                    Utils.showNotification(`❌ Token验证失败: ${e.message}`);
+                    let errorMsg = e.message;
+                    if (e.message.includes('401')) {
+                        errorMsg = 'Token无效或已过期，请检查Token是否正确';
+                    } else if (e.message.includes('403')) {
+                        errorMsg = 'Token权限不足，请确保勾选了gist权限';
+                    } else if (e.message.includes('404')) {
+                        errorMsg = 'API访问失败，请检查网络连接';
+                    }
+                    Utils.showNotification(`❌ Token验证失败: ${errorMsg}`);
                     return;
                 }
 
