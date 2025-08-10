@@ -83,6 +83,20 @@
             });
         },
 
+        showConfirm(message, title = '确认') {
+            return new Promise((resolve) => {
+                const result = confirm(`${title}\n\n${message}`);
+                resolve(result);
+            });
+        },
+
+        showPrompt(message, defaultValue = '', title = '输入') {
+            return new Promise((resolve) => {
+                const result = prompt(`${title}\n\n${message}`, defaultValue);
+                resolve(result);
+            });
+        },
+
         truncateText(text, maxLength = 100) {
             if (!text || text.length <= maxLength) return text;
             return text.substring(0, maxLength) + '...';
@@ -548,21 +562,39 @@
         async configureGist() {
             try {
                 const currentToken = await GM_getValue(CONFIG.storageKeys.gistToken, '');
-                const token = prompt(
-                    '请输入GitHub Personal Access Token（需要gist权限）:\n\n' +
-                    '1. 访问 https://github.com/settings/tokens\n' +
-                    '2. 点击"Generate new token (classic)"\n' +
-                    '3. 勾选"gist"权限\n' +
-                    '4. 复制生成的token',
-                    currentToken
+                const token = await Utils.showPrompt(
+                    '获取步骤：github.com/settings/tokens → Generate new token (classic) → 勾选gist权限\n\n' +
+                    '⚠️ Token格式：ghp_xxxxxxxxxxxxxx',
+                    currentToken,
+                    'GitHub Token配置'
                 );
 
                 if (!token) return;
 
+                // 验证Token格式
+                if (!token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+                    Utils.showNotification('❌ Token格式不正确！应为 ghp_xxx 或 github_pat_xxx');
+                    return;
+                }
+
+                // 测试Token是否有效
+                Utils.showNotification('正在验证Token...');
+                try {
+                    await GitHubAPI.request({
+                        method: 'GET',
+                        url: 'https://api.github.com/user',
+                        token
+                    });
+                } catch (e) {
+                    Utils.showNotification(`❌ Token验证失败: ${e.message}`);
+                    return;
+                }
+
                 let gistId = await GM_getValue(CONFIG.storageKeys.gistId, '');
-                gistId = prompt(
-                    '请输入Gist ID（留空将自动创建新的Gist）:',
-                    gistId
+                gistId = await Utils.showPrompt(
+                    '留空将自动创建新的Gist',
+                    gistId,
+                    'Gist ID（可选）'
                 );
 
                 if (!gistId) {
@@ -570,17 +602,17 @@
                     const emptyProfile = DataExtractor.getEmptyProfile();
                     const newGist = await GitHubAPI.createGist(token, CONFIG.storageKeys.gistFile, emptyProfile);
                     gistId = newGist.id;
-                    Utils.showNotification(`新Gist已创建: ${gistId}`);
+                    Utils.showNotification(`✅ 新Gist已创建: ${gistId}`);
                 }
 
                 await GM_setValue(CONFIG.storageKeys.gistToken, token);
                 await GM_setValue(CONFIG.storageKeys.gistId, gistId);
 
-                Utils.showNotification('Gist配置完成！');
+                Utils.showNotification('✅ Gist配置完成！');
 
             } catch (error) {
                 Utils.log(`配置Gist失败: ${error.message}`, 'error');
-                alert(`配置失败: ${error.message}`);
+                Utils.showNotification(`❌ 配置失败: ${error.message}`);
             }
         },
 
@@ -593,48 +625,22 @@
             try {
                 const { profile } = DataExtractor.extractFromChatGPT();
 
-                // 允许用户编辑关键信息
-                const aboutYou = prompt(
-                    '关于你的信息（可编辑）:',
-                    profile.profile.aboutYou || ''
+                // 简化：只询问是否包含最近会话
+                const includeConvs = await Utils.showConfirm(
+                    '是否包含最近的对话记录（最多3条）？\n\n' +
+                    '包含对话记录可以帮助目标AI更好地理解你的聊天风格和偏好。',
+                    '导出选项'
                 );
-                if (aboutYou !== null) {
-                    profile.profile.aboutYou = aboutYou;
-                }
-
-                const replyStyle = prompt(
-                    '期望的回复风格（可编辑）:',
-                    profile.profile.replyStyle || '简洁、专业、中文回复'
-                );
-                if (replyStyle !== null) {
-                    profile.profile.replyStyle = replyStyle;
-                }
-
-                const knowledgeUrls = prompt(
-                    '相关知识链接（逗号分隔，可留空）:',
-                    profile.knowledge.urls.join(', ')
-                );
-                if (knowledgeUrls !== null) {
-                    profile.knowledge.urls = knowledgeUrls
-                        .split(',')
-                        .map(url => url.trim())
-                        .filter(url => url.length > 0);
-                }
-
-                const notes = prompt(
-                    '额外笔记（可留空）:',
-                    profile.knowledge.notes
-                );
-                if (notes !== null) {
-                    profile.knowledge.notes = notes;
-                }
-
-                // 新增：是否包含最近会话
-                const includeConvs = confirm('是否包含最近的对话记录（最多3条）？');
+                
                 if (includeConvs) {
                     Utils.showNotification('正在获取最近会话...');
                     const conversations = await DataExtractor.fetchRecentConversations(3, 12);
                     profile.conversations = conversations;
+                }
+
+                // 设置默认值
+                if (!profile.profile.replyStyle) {
+                    profile.profile.replyStyle = '简洁、专业、中文回复';
                 }
 
                 // 保存到Gist
@@ -685,11 +691,11 @@
                 const autoSend = await GM_getValue(CONFIG.storageKeys.autoSend, false);
                 
                 if (!autoSend) {
-                    const shouldSend = confirm(
-                        '数据加载成功！\n\n' +
+                    const shouldSend = await Utils.showConfirm(
                         `记忆项: ${profile.memoryItems.length} 个\n` +
                         `导出时间: ${Utils.formatDate(new Date(profile.exportedAt))}\n\n` +
-                        '是否立即发送到对话框？'
+                        '是否立即发送到对话框？（否则只注入到输入框）',
+                        '✅ 数据加载成功'
                     );
                     
                     await ContentInjector.injectMemory(profile, shouldSend);
@@ -699,7 +705,7 @@
 
             } catch (error) {
                 Utils.log(`加载失败: ${error.message}`, 'error');
-                alert(`加载失败: ${error.message}`);
+                Utils.showNotification(`❌ 加载失败: ${error.message}`);
             }
         },
 
@@ -740,10 +746,35 @@
                     }
                 }
 
-                alert(status);
+                // 创建状态显示界面
+                const statusDiv = document.createElement('div');
+                statusDiv.style.cssText = `
+                    position: fixed; top: 20px; right: 20px; z-index: 10000;
+                    background: white; border: 2px solid #4CAF50; border-radius: 8px;
+                    padding: 20px; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5;
+                `;
+                statusDiv.innerHTML = `
+                    <div style="font-weight: bold; color: #4CAF50; margin-bottom: 10px;">
+                        🔍 LLM Memory Transfer 状态
+                    </div>
+                    <pre style="margin: 0; white-space: pre-wrap;">${status}</pre>
+                    <button onclick="this.parentElement.remove()" style="
+                        margin-top: 15px; padding: 8px 16px; background: #4CAF50; color: white;
+                        border: none; border-radius: 4px; cursor: pointer;
+                    ">关闭</button>
+                `;
+                document.body.appendChild(statusDiv);
+
+                // 10秒后自动关闭
+                setTimeout(() => {
+                    if (statusDiv.parentElement) {
+                        statusDiv.remove();
+                    }
+                }, 10000);
 
             } catch (error) {
-                alert(`获取状态失败: ${error.message}`);
+                Utils.showNotification(`❌ 获取状态失败: ${error.message}`);
             }
         }
     };
@@ -782,15 +813,21 @@
         document.head.appendChild(style);
     }
 
-    // 等待页面加载完成后初始化
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initialize);
-    } else {
-        // 确保页面完全加载后再初始化
-        setTimeout(initialize, 100);
+    // 防止重复初始化
+    let isInitialized = false;
+    
+    function safeInitialize() {
+        if (isInitialized) return;
+        isInitialized = true;
+        initialize();
     }
 
-    // 强制初始化（防止某些情况下初始化失败）
-    initialize();
+    // 等待页面加载完成后初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', safeInitialize);
+    } else {
+        // 确保页面完全加载后再初始化
+        setTimeout(safeInitialize, 100);
+    }
 
 })(); 
