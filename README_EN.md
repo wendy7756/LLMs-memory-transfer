@@ -1,14 +1,9 @@
 # LLM Memory Transfer
 
-**🌍 Languages: [中文](README.md) | English**
+Languages: English | [中文](README.md)
 
 A powerful Tampermonkey userscript that enables seamless memory and document transfer between ChatGPT, Claude, and Gemini.
 
-[![GitHub Stars](https://img.shields.io/github/stars/wendy7756/LLMs-memery-transfer?style=social)](https://github.com/wendy7756/LLMs-memery-transfer)
-[![GitHub Forks](https://img.shields.io/github/forks/wendy7756/LLMs-memery-transfer?style=social)](https://github.com/wendy7756/LLMs-memery-transfer)
-[![GitHub Issues](https://img.shields.io/github/issues/wendy7756/LLMs-memery-transfer)](https://github.com/wendy7756/LLMs-memery-transfer/issues)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Greasy Fork](https://img.shields.io/badge/Greasy%20Fork-Install-brightgreen)](https://greasyfork.org/zh-CN/scripts/XXX-llm-memory-transfer)
 
 ## ✨ Features
 

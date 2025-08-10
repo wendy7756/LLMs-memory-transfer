@@ -45,7 +45,7 @@
 
     // 配置常量
     const CONFIG = {
-        version: '0.1.0',
+        version: '0.1.2',
         storageKeys: {
             gistToken: 'llm_mt_gist_token',
             gistId: 'llm_mt_gist_id',

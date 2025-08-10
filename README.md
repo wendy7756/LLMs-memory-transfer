@@ -1,16 +1,8 @@
 # LLM Memory Transfer
 
-**🌍 Languages: 中文 | [English](README_EN.md)**
+Languages: 中文 | [English](README_EN.md)
 
 一个好用的Tampermonkey用户脚本，可以在ChatGPT、Claude和Gemini之间迁移记忆和文档数据。
-
-[![GitHub Stars](https://img.shields.io/github/stars/wendy7756/LLMs-memery-transfer?style=social)](https://github.com/wendy7756/LLMs-memery-transfer)
-[![GitHub Forks](https://img.shields.io/github/forks/wendy7756/LLMs-memery-transfer?style=social)](https://github.com/wendy7756/LLMs-memery-transfer)
-[![GitHub Issues](https://img.shields.io/github/issues/wendy7756/LLMs-memery-transfer)](https://github.com/wendy7756/LLMs-memery-transfer/issues)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Greasy Fork](https://img.shields.io/badge/Greasy%20Fork-Install-brightgreen)](https://greasyfork.org/zh-CN/scripts/XXX-llm-memory-transfer)
-
-## 功能特点
 
 - 🔄 **跨平台迁移**: 支持ChatGPT → Claude/Gemini的记忆迁移
 - 📋 **智能提取**: 自动从ChatGPT的localStorage提取自定义指令和记忆
