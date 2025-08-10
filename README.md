@@ -2,7 +2,7 @@
 
 # LLM Memory Transfer
 
-Languages: 中文 | [English](README_EN.md)
+中文 | [English](README_EN.md)
 
 一个好用的Tampermonkey用户脚本，可以在ChatGPT、Claude和Gemini之间迁移记忆和文档数据。
 
