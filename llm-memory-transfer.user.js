@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LLM Memory Transfer
 // @namespace    https://github.com/wendy7756/LLMs-memory-transfer
-// @version 0.1.2
+// @version 0.1.4
 // @description  在ChatGPT、Claude和Gemini之间迁移记忆和文档数据
 // @description:en Transfer memories and documents between ChatGPT, Claude, and Gemini
 // @author       wendy
@@ -45,7 +45,7 @@
 
     // 配置常量
     const CONFIG = {
-        version: '0.1.2',
+        version: '0.1.4',
         storageKeys: {
             gistToken: 'llm_mt_gist_token',
             gistId: 'llm_mt_gist_id',
@@ -765,16 +765,26 @@
                     padding: 20px; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
                     font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5;
                 `;
-                statusDiv.innerHTML = `
-                    <div style="font-weight: bold; color: #4CAF50; margin-bottom: 10px;">
-                        🔍 LLM Memory Transfer 状态
-                    </div>
-                    <pre style="margin: 0; white-space: pre-wrap;">${status}</pre>
-                    <button onclick="this.parentElement.remove()" style="
-                        margin-top: 15px; padding: 8px 16px; background: #4CAF50; color: white;
-                        border: none; border-radius: 4px; cursor: pointer;
-                    ">关闭</button>
+                // 创建状态弹窗内容
+                const titleDiv = document.createElement('div');
+                titleDiv.style.cssText = 'font-weight: bold; color: #4CAF50; margin-bottom: 10px;';
+                titleDiv.textContent = '🔍 LLM Memory Transfer 状态';
+
+                const contentPre = document.createElement('pre');
+                contentPre.style.cssText = 'margin: 0; white-space: pre-wrap;';
+                contentPre.textContent = status;
+
+                const closeButton = document.createElement('button');
+                closeButton.style.cssText = `
+                    margin-top: 15px; padding: 8px 16px; background: #4CAF50; color: white;
+                    border: none; border-radius: 4px; cursor: pointer;
                 `;
+                closeButton.textContent = '关闭';
+                closeButton.addEventListener('click', () => statusDiv.remove());
+
+                statusDiv.appendChild(titleDiv);
+                statusDiv.appendChild(contentPre);
+                statusDiv.appendChild(closeButton);
                 document.body.appendChild(statusDiv);
 
                 // 10秒后自动关闭
